@@ -9,10 +9,23 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}']
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        cleanupOutdatedCaches: true,
+        navigateFallback: '/baduk/index.html'
       },
-      devOptions: {
-        enabled: true
+      devOptions: { enabled: true },
+      manifest: {
+        name: '바둑 정석 학습',
+        short_name: '바둑정석',
+        start_url: '/baduk/',
+        scope: '/baduk/',
+        display: 'standalone',
+        background_color: '#2c3e50',
+        theme_color: '#2c3e50',
+        description: '바둑 정석을 배우는 모바일 게임',
+        icons: [
+          { src: 'baduk-icon.svg', sizes: 'any', type: 'image/svg+xml' }
+        ]
       }
     })
   ],
