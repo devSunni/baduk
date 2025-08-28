@@ -1,0 +1,32 @@
+{
+  "name": "baduk-jungsuk",
+  "version": "1.0.0",
+  "description": "바둑 정석 학습 게임 - 모바일/태블릿/PC 지원",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "vite preview"
+  },
+  "keywords": [
+    "baduk",
+    "go",
+    "jungsuk",
+    "puzzle",
+    "game"
+  ],
+  "author": "devSunni",
+  "license": "MIT",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^5.0.0",
+    "vite-plugin-pwa": "^0.20.5"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "styled-components": "^6.0.0"
+  }
+}

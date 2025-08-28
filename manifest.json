@@ -1,0 +1,17 @@
+{
+  "name": "바둑 정석 학습",
+  "short_name": "바둑정석",
+  "description": "바둑 정석을 배우는 모바일 게임",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2c3e50",
+  "theme_color": "#2c3e50",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/baduk-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+} 
