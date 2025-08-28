@@ -11,7 +11,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
         cleanupOutdatedCaches: true,
-        navigateFallback: '/baduk/index.html'
+        navigateFallback: '/baduk/index.html',
+        clientsClaim: true,
+        skipWaiting: true
       },
       devOptions: { enabled: true },
       manifest: {
