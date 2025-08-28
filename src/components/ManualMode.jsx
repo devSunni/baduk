@@ -57,10 +57,6 @@ const Select = styled.select`
 
 const Checkbox = styled.input``
 
-const HiddenFileInput = styled.input`
-  display: none;
-`
-
 const Tip = styled.div`
   color: rgba(255,255,255,0.85);
   text-align: center;
@@ -78,7 +74,6 @@ const ManualMode = ({ boardSize = 19 }) => {
   const [showMoveNumbers, setShowMoveNumbers] = useState(true)
   const [theme, setTheme] = useState('wood')
   const boardRef = useRef(null)
-  const fileRef = useRef(null)
 
   useEffect(() => {
     handleReset()
@@ -150,33 +145,6 @@ const ManualMode = ({ boardSize = 19 }) => {
     a.click()
   }
 
-  const handleExportJSON = () => {
-    const data = { boardSize, stones }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `manual_${boardSize}x${boardSize}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
-  }
-
-  const handleImportJSON = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result)
-        if (Array.isArray(parsed.stones)) {
-          setStones(parsed.stones)
-          setNextMoveNumber(parsed.stones.length + 1)
-        }
-      } catch {}
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
-
   return (
     <Wrapper>
       <Controls>
@@ -185,9 +153,6 @@ const ManualMode = ({ boardSize = 19 }) => {
         <Button onClick={handleReset}>초기화</Button>
         <Button onClick={() => setEraser(e => !e)}>{eraser ? '지우개 종료' : '지우개 모드'}</Button>
         <Button onClick={handleSaveImage} variant="primary">그림으로 저장</Button>
-        <Button onClick={handleExportJSON}>JSON 내보내기</Button>
-        <Button onClick={() => fileRef.current?.click()}>JSON 가져오기</Button>
-        <HiddenFileInput ref={fileRef} type="file" accept="application/json" onChange={handleImportJSON} />
       </Controls>
 
       <Row>
@@ -231,7 +196,7 @@ const ManualMode = ({ boardSize = 19 }) => {
         theme={theme}
       />
 
-      <Tip>돌을 눌러 자유롭게 두세요. 자동/수동 색 전환, 지우개, 좌표/수순 토글, JSON 입출력, PNG 저장을 지원합니다.</Tip>
+      <Tip>돌을 눌러 자유롭게 두세요. 자동/수동 색 전환, 지우개, 좌표/수순 토글, PNG 저장을 지원합니다.</Tip>
     </Wrapper>
   )
 }
