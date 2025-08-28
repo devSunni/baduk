@@ -12,17 +12,18 @@ const Wrapper = styled.div`
 `
 
 const Controls = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.5rem;
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
+  max-width: 720px;
 `
 
 const Button = styled.button`
   background: ${p => p.variant === 'primary' ? 'rgba(46, 204, 113, 0.8)' : 'rgba(255, 255, 255, 0.1)'};
   border: 1px solid ${p => p.variant === 'primary' ? 'rgba(46, 204, 113, 0.3)' : 'rgba(255, 255, 255, 0.2)'};
   color: white;
-  padding: 0.75rem 1.5rem;
+  padding: 0.6rem 0.9rem;
   border-radius: 8px;
   cursor: pointer;
   font-size: 0.9rem;
@@ -32,6 +33,34 @@ const Button = styled.button`
   &:active { transform: translateY(0); }
 `
 
+const Row = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+`
+
+const Label = styled.label`
+  color: rgba(255,255,255,0.9);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+`
+
+const Select = styled.select`
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+`
+
+const Checkbox = styled.input``
+
+const HiddenFileInput = styled.input`
+  display: none;
+`
+
 const Tip = styled.div`
   color: rgba(255,255,255,0.85);
   text-align: center;
@@ -39,12 +68,19 @@ const Tip = styled.div`
 
 const ManualMode = ({ boardSize = 19 }) => {
   const [stones, setStones] = useState([])
+  const [undoStack, setUndoStack] = useState([])
+  const [redoStack, setRedoStack] = useState([])
   const [nextMoveNumber, setNextMoveNumber] = useState(1)
-  const [nextColor, setNextColor] = useState('black')
+  const [autoColor, setAutoColor] = useState(true)
+  const [currentColor, setCurrentColor] = useState('black')
+  const [eraser, setEraser] = useState(false)
+  const [showCoordinates, setShowCoordinates] = useState(true)
+  const [showMoveNumbers, setShowMoveNumbers] = useState(true)
+  const [theme, setTheme] = useState('wood')
   const boardRef = useRef(null)
+  const fileRef = useRef(null)
 
   useEffect(() => {
-    // 보드 크기 바뀌면 초기화
     handleReset()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardSize])
@@ -53,24 +89,56 @@ const ManualMode = ({ boardSize = 19 }) => {
     return stones.some(s => s.x === x && s.y === y)
   }, [stones])
 
+  const pushUndo = useCallback((prev) => {
+    setUndoStack(stack => [...stack, prev])
+    setRedoStack([])
+  }, [])
+
   const handlePlace = useCallback((x, y) => {
+    if (eraser) {
+      if (!isOccupied(x, y)) return
+      pushUndo({ stones, nextMoveNumber, autoColor, currentColor })
+      setStones(prev => prev.filter(s => !(s.x === x && s.y === y)))
+      return
+    }
+
     if (isOccupied(x, y)) return
-    const newStone = { x, y, color: nextColor, moveNumber: nextMoveNumber }
+    const color = autoColor ? (nextMoveNumber % 2 === 1 ? 'black' : 'white') : currentColor
+    const newStone = { x, y, color, moveNumber: nextMoveNumber }
+    pushUndo({ stones, nextMoveNumber, autoColor, currentColor })
     setStones(prev => [...prev, newStone])
     setNextMoveNumber(n => n + 1)
-    setNextColor(c => c === 'black' ? 'white' : 'black')
-  }, [isOccupied, nextColor, nextMoveNumber])
+    if (!autoColor) {
+      setCurrentColor(c => c === 'black' ? 'white' : 'black')
+    }
+  }, [autoColor, currentColor, eraser, isOccupied, nextMoveNumber, pushUndo, stones])
 
   const handleReset = () => {
     setStones([])
+    setUndoStack([])
+    setRedoStack([])
     setNextMoveNumber(1)
-    setNextColor('black')
+    setCurrentColor('black')
   }
 
   const handleUndo = () => {
-    setStones(prev => prev.slice(0, -1))
-    setNextMoveNumber(n => Math.max(1, n - 1))
-    setNextColor(c => c === 'black' ? 'white' : 'black')
+    if (undoStack.length === 0) return
+    const prev = undoStack[undoStack.length - 1]
+    setUndoStack(stack => stack.slice(0, -1))
+    setRedoStack(stack => [...stack, { stones, nextMoveNumber, autoColor, currentColor }])
+    setStones(prev.stones)
+    setNextMoveNumber(prev.nextMoveNumber)
+    setCurrentColor(prev.currentColor)
+  }
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) return
+    const next = redoStack[redoStack.length - 1]
+    setRedoStack(stack => stack.slice(0, -1))
+    setUndoStack(stack => [...stack, { stones, nextMoveNumber, autoColor, currentColor }])
+    setStones(next.stones)
+    setNextMoveNumber(next.nextMoveNumber)
+    setCurrentColor(next.currentColor)
   }
 
   const handleSaveImage = () => {
@@ -82,20 +150,88 @@ const ManualMode = ({ boardSize = 19 }) => {
     a.click()
   }
 
+  const handleExportJSON = () => {
+    const data = { boardSize, stones }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `manual_${boardSize}x${boardSize}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  const handleImportJSON = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result)
+        if (Array.isArray(parsed.stones)) {
+          setStones(parsed.stones)
+          setNextMoveNumber(parsed.stones.length + 1)
+        }
+      } catch {}
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
   return (
     <Wrapper>
       <Controls>
         <Button onClick={handleUndo}>되돌리기</Button>
+        <Button onClick={handleRedo}>다시실행</Button>
         <Button onClick={handleReset}>초기화</Button>
-        <Button variant="primary" onClick={handleSaveImage}>그림으로 저장</Button>
+        <Button onClick={() => setEraser(e => !e)}>{eraser ? '지우개 종료' : '지우개 모드'}</Button>
+        <Button onClick={handleSaveImage} variant="primary">그림으로 저장</Button>
+        <Button onClick={handleExportJSON}>JSON 내보내기</Button>
+        <Button onClick={() => fileRef.current?.click()}>JSON 가져오기</Button>
+        <HiddenFileInput ref={fileRef} type="file" accept="application/json" onChange={handleImportJSON} />
       </Controls>
+
+      <Row>
+        <Label>
+          <Checkbox type="checkbox" checked={autoColor} onChange={(e) => setAutoColor(e.target.checked)} />
+          자동 색 번갈아 두기
+        </Label>
+        {!autoColor && (
+          <Select value={currentColor} onChange={(e) => setCurrentColor(e.target.value)}>
+            <option value="black">흑</option>
+            <option value="white">백</option>
+          </Select>
+        )}
+      </Row>
+
+      <Row>
+        <Label>
+          <Checkbox type="checkbox" checked={showMoveNumbers} onChange={(e) => setShowMoveNumbers(e.target.checked)} />
+          수순 번호 표시
+        </Label>
+        <Label>
+          <Checkbox type="checkbox" checked={showCoordinates} onChange={(e) => setShowCoordinates(e.target.checked)} />
+          좌표 표시
+        </Label>
+        <Label>
+          테마
+          <Select value={theme} onChange={(e) => setTheme(e.target.value)}>
+            <option value="wood">우드</option>
+            <option value="dark">다크</option>
+          </Select>
+        </Label>
+      </Row>
+
       <BadukBoard
         ref={boardRef}
         boardSize={boardSize}
         stones={stones}
         onStonePlace={handlePlace}
+        showCoordinates={showCoordinates}
+        showMoveNumbers={showMoveNumbers}
+        theme={theme}
       />
-      <Tip>돌을 눌러 자유롭게 두세요. 색은 자동으로 번갈아 둡니다.</Tip>
+
+      <Tip>돌을 눌러 자유롭게 두세요. 자동/수동 색 전환, 지우개, 좌표/수순 토글, JSON 입출력, PNG 저장을 지원합니다.</Tip>
     </Wrapper>
   )
 }
