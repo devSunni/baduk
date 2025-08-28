@@ -16,6 +16,16 @@
 <body>
   <div id="root"></div>
   <div id="fallback">앱 로딩 중... 문제가 계속되면 새로고침하거나 주소 끝에 ?nocache=1 또는 ?nosw=1 를 붙여 접속해보세요.</div>
+  <script>
+    (function(){
+      function show(msg){
+        var el = document.getElementById('fallback');
+        if (el) { el.textContent = '오류: ' + msg; el.style.display = 'block'; }
+      }
+      window.addEventListener('error', function(e){ show(e?.error?.message || e?.message || '알 수 없는 오류'); });
+      window.addEventListener('unhandledrejection', function(e){ show(e?.reason?.message || String(e?.reason || '미처리 예외')); });
+    })();
+  </script>
   <script type="module" src="/src/main.jsx"></script>
   <noscript>이 앱을 사용하려면 JavaScript가 필요합니다.</noscript>
 </body>
