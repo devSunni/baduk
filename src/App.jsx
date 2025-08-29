@@ -43,7 +43,7 @@ const GhostButton = styled.button`
 `
 
 function App() {
-  const [currentView, setCurrentView] = useState('menu') // 'menu', 'game', 'manual'
+  const [currentView, setCurrentView] = useState('manual') // 'menu', 'game', 'manual'
   const [selectedProblem, setSelectedProblem] = useState(null)
   const [progress, setProgress] = useState({})
   const [boardSize, setBoardSize] = useState(19)
