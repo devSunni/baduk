@@ -27,7 +27,10 @@ const BadukBoard = forwardRef(({
   hintMove = null,
   showCoordinates = true,
   showMoveNumbers = true,
-  theme = 'wood' // 'wood' | 'dark'
+  theme = 'wood', // 'wood' | 'dark'
+  territoryBlack = [], // [{x, y}]
+  territoryWhite = [], // [{x, y}]
+  showTerritory = true
 }, ref) => {
   const canvasRef = useRef(null)
   const wrapperRef = useRef(null)
@@ -58,7 +61,7 @@ const BadukBoard = forwardRef(({
     resize()
     return () => ro.disconnect()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardSize, stones, showHint, hintMove, showCoordinates, showMoveNumbers, theme])
+  }, [boardSize, stones, showHint, hintMove, showCoordinates, showMoveNumbers, theme, showTerritory, territoryBlack, territoryWhite])
 
   const draw = () => {
     const canvas = canvasRef.current
@@ -134,6 +137,32 @@ const BadukBoard = forwardRef(({
       ctx.lineWidth = Math.max(2, Math.floor(cell * 0.08))
       ctx.arc(Math.round(hx), Math.round(hy), Math.max(cell * 0.35, 8), 0, Math.PI * 2)
       ctx.stroke()
+    }
+
+    // territory overlay (draw under stones)
+    if (showTerritory) {
+      const drawTerritoryDot = (x, y, color) => {
+        const [px, py] = toPixel(x, y, padding, cell)
+        const r = Math.max(2, cell * 0.14)
+        ctx.beginPath()
+        if (color === 'black') {
+          ctx.fillStyle = theme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.18)'
+        } else {
+          ctx.fillStyle = theme === 'dark' ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.35)'
+        }
+        ctx.arc(Math.round(px), Math.round(py), Math.round(r), 0, Math.PI * 2)
+        ctx.fill()
+      }
+      territoryBlack.forEach(pt => {
+        if (!pt) return
+        if (pt.x < 1 || pt.y < 1 || pt.x > boardSize || pt.y > boardSize) return
+        drawTerritoryDot(pt.x, pt.y, 'black')
+      })
+      territoryWhite.forEach(pt => {
+        if (!pt) return
+        if (pt.x < 1 || pt.y < 1 || pt.x > boardSize || pt.y > boardSize) return
+        drawTerritoryDot(pt.x, pt.y, 'white')
+      })
     }
 
     // stones

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react'
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react'
 import styled from 'styled-components'
 import BadukBoard from './BadukBoard'
 
@@ -62,6 +62,15 @@ const Tip = styled.div`
   text-align: center;
 `
 
+const Score = styled.div`
+  color: rgba(255,255,255,0.95);
+  text-align: center;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+`
+
 const ManualMode = ({ boardSize = 19 }) => {
   const [stones, setStones] = useState([])
   const [undoStack, setUndoStack] = useState([])
@@ -73,6 +82,9 @@ const ManualMode = ({ boardSize = 19 }) => {
   const [showCoordinates, setShowCoordinates] = useState(true)
   const [showMoveNumbers, setShowMoveNumbers] = useState(true)
   const [theme, setTheme] = useState('wood')
+  const [rulesEnabled, setRulesEnabled] = useState(true)
+  const [showTerritory, setShowTerritory] = useState(true)
+  const [showScore, setShowScore] = useState(true)
   const boardRef = useRef(null)
 
   useEffect(() => {
@@ -89,6 +101,88 @@ const ManualMode = ({ boardSize = 19 }) => {
     setRedoStack([])
   }, [])
 
+  const getNeighbors = useCallback((x, y) => {
+    const neighbors = []
+    if (x > 1) neighbors.push([x - 1, y])
+    if (x < boardSize) neighbors.push([x + 1, y])
+    if (y > 1) neighbors.push([x, y - 1])
+    if (y < boardSize) neighbors.push([x, y + 1])
+    return neighbors
+  }, [boardSize])
+
+  const keyOf = (x, y) => `${x},${y}`
+
+  const buildStoneMaps = useCallback((stoneList) => {
+    const posToStone = new Map()
+    const colorAt = new Map()
+    stoneList.forEach(s => {
+      const k = keyOf(s.x, s.y)
+      posToStone.set(k, s)
+      colorAt.set(k, s.color)
+    })
+    return { posToStone, colorAt }
+  }, [])
+
+  const getGroupAndLiberties = useCallback((stoneList, x, y) => {
+    const { posToStone } = buildStoneMaps(stoneList)
+    const origin = posToStone.get(keyOf(x, y))
+    if (!origin) return { stones: [], liberties: new Set() }
+    const color = origin.color
+    const visited = new Set()
+    const stack = [[x, y]]
+    const group = []
+    const liberties = new Set()
+    while (stack.length) {
+      const [cx, cy] = stack.pop()
+      const ck = keyOf(cx, cy)
+      if (visited.has(ck)) continue
+      visited.add(ck)
+      group.push([cx, cy])
+      const neighbors = getNeighbors(cx, cy)
+      neighbors.forEach(([nx, ny]) => {
+        const nk = keyOf(nx, ny)
+        const neighborStone = posToStone.get(nk)
+        if (!neighborStone) {
+          liberties.add(nk)
+        } else if (neighborStone.color === color) {
+          if (!visited.has(nk)) stack.push([nx, ny])
+        }
+      })
+    }
+    return { stones: group, liberties }
+  }, [buildStoneMaps, getNeighbors])
+
+  const tryPlaceWithRules = useCallback((x, y, color) => {
+    if (isOccupied(x, y)) return { ok: false }
+
+    const placed = { x, y, color, moveNumber: nextMoveNumber }
+    let temp = [...stones, placed]
+
+    const opponent = color === 'black' ? 'white' : 'black'
+    const neighbors = getNeighbors(x, y)
+    const toRemoveKeys = new Set()
+    neighbors.forEach(([nx, ny]) => {
+      const neighborStone = stones.find(s => s.x === nx && s.y === ny)
+      if (neighborStone && neighborStone.color === opponent) {
+        const { stones: gStones, liberties } = getGroupAndLiberties(temp, nx, ny)
+        if (liberties.size === 0) {
+          gStones.forEach(([gx, gy]) => toRemoveKeys.add(keyOf(gx, gy)))
+        }
+      }
+    })
+
+    if (toRemoveKeys.size > 0) {
+      temp = temp.filter(s => !toRemoveKeys.has(keyOf(s.x, s.y)))
+    }
+
+    const { liberties } = getGroupAndLiberties(temp, x, y)
+    if (liberties.size === 0) {
+      return { ok: false }
+    }
+
+    return { ok: true, nextStones: temp }
+  }, [getGroupAndLiberties, getNeighbors, isOccupied, nextMoveNumber, stones])
+
   const handlePlace = useCallback((x, y) => {
     if (eraser) {
       if (!isOccupied(x, y)) return
@@ -100,13 +194,22 @@ const ManualMode = ({ boardSize = 19 }) => {
     if (isOccupied(x, y)) return
     const color = autoColor ? (nextMoveNumber % 2 === 1 ? 'black' : 'white') : currentColor
     const newStone = { x, y, color, moveNumber: nextMoveNumber }
-    pushUndo({ stones, nextMoveNumber, autoColor, currentColor })
-    setStones(prev => [...prev, newStone])
+
+    if (rulesEnabled) {
+      const result = tryPlaceWithRules(x, y, color)
+      if (!result.ok) return
+      pushUndo({ stones, nextMoveNumber, autoColor, currentColor })
+      setStones(result.nextStones)
+    } else {
+      pushUndo({ stones, nextMoveNumber, autoColor, currentColor })
+      setStones(prev => [...prev, newStone])
+    }
+
     setNextMoveNumber(n => n + 1)
     if (!autoColor) {
       setCurrentColor(c => c === 'black' ? 'white' : 'black')
     }
-  }, [autoColor, currentColor, eraser, isOccupied, nextMoveNumber, pushUndo, stones])
+  }, [autoColor, currentColor, eraser, isOccupied, nextMoveNumber, pushUndo, rulesEnabled, stones, tryPlaceWithRules])
 
   const handleReset = () => {
     setStones([])
@@ -144,6 +247,68 @@ const ManualMode = ({ boardSize = 19 }) => {
     a.download = `manual_${boardSize}x${boardSize}.png`
     a.click()
   }
+
+  const emptyPoints = useMemo(() => {
+    const occupied = new Set(stones.map(s => keyOf(s.x, s.y)))
+    const pts = []
+    for (let x = 1; x <= boardSize; x++) {
+      for (let y = 1; y <= boardSize; y++) {
+        const k = keyOf(x, y)
+        if (!occupied.has(k)) pts.push([x, y])
+      }
+    }
+    return pts
+  }, [stones, boardSize])
+
+  const { territoryBlackPoints, territoryWhitePoints } = useMemo(() => {
+    const visited = new Set()
+    const { posToStone } = buildStoneMaps(stones)
+    const blackPts = []
+    const whitePts = []
+
+    const flood = (sx, sy) => {
+      const queue = [[sx, sy]]
+      const region = []
+      const borderColors = new Set()
+      visited.add(keyOf(sx, sy))
+      while (queue.length) {
+        const [cx, cy] = queue.shift()
+        region.push([cx, cy])
+        const neighbors = getNeighbors(cx, cy)
+        neighbors.forEach(([nx, ny]) => {
+          const nk = keyOf(nx, ny)
+          const neighborStone = posToStone.get(nk)
+          if (neighborStone) {
+            borderColors.add(neighborStone.color)
+          } else if (!visited.has(nk)) {
+            visited.add(nk)
+            queue.push([nx, ny])
+          }
+        })
+      }
+      return { region, borderColors }
+    }
+
+    for (const [x, y] of emptyPoints) {
+      const k = keyOf(x, y)
+      if (visited.has(k)) continue
+      const { region, borderColors } = flood(x, y)
+      if (borderColors.size === 1) {
+        const only = [...borderColors][0]
+        if (only === 'black') {
+          region.forEach(([rx, ry]) => blackPts.push({ x: rx, y: ry }))
+        } else if (only === 'white') {
+          region.forEach(([rx, ry]) => whitePts.push({ x: rx, y: ry }))
+        }
+      }
+    }
+
+    return { territoryBlackPoints: blackPts, territoryWhitePoints: whitePts }
+  }, [buildStoneMaps, emptyPoints, getNeighbors, stones])
+
+  const blackScore = territoryBlackPoints.length
+  const whiteScore = territoryWhitePoints.length
+  const lead = blackScore === whiteScore ? '동점' : (blackScore > whiteScore ? `흑 +${blackScore - whiteScore}` : `백 +${whiteScore - blackScore}`)
 
   return (
     <Wrapper>
@@ -186,6 +351,21 @@ const ManualMode = ({ boardSize = 19 }) => {
         </Label>
       </Row>
 
+      <Row>
+        <Label>
+          <Checkbox type="checkbox" checked={rulesEnabled} onChange={(e) => setRulesEnabled(e.target.checked)} />
+          바둑룰 적용(자살금지/따내기)
+        </Label>
+        <Label>
+          <Checkbox type="checkbox" checked={showTerritory} onChange={(e) => setShowTerritory(e.target.checked)} />
+          집 표시
+        </Label>
+        <Label>
+          <Checkbox type="checkbox" checked={showScore} onChange={(e) => setShowScore(e.target.checked)} />
+          점수/우세 표시
+        </Label>
+      </Row>
+
       <BadukBoard
         ref={boardRef}
         boardSize={boardSize}
@@ -194,9 +374,20 @@ const ManualMode = ({ boardSize = 19 }) => {
         showCoordinates={showCoordinates}
         showMoveNumbers={showMoveNumbers}
         theme={theme}
+        territoryBlack={territoryBlackPoints}
+        territoryWhite={territoryWhitePoints}
+        showTerritory={showTerritory}
       />
 
-      <Tip>돌을 눌러 자유롭게 두세요. 자동/수동 색 전환, 지우개, 좌표/수순 토글, PNG 저장을 지원합니다.</Tip>
+      {showScore && (
+        <Score>
+          <span>흑 집: {blackScore}</span>
+          <span>백 집: {whiteScore}</span>
+          <span>현재 우세: {lead}</span>
+        </Score>
+      )}
+
+      <Tip>돌을 눌러 자유롭게 두세요. 자동/수동 색 전환, 지우개, 룰 적용, 집/점수 표시, PNG 저장을 지원합니다.</Tip>
     </Wrapper>
   )
 }
