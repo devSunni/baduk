@@ -10,6 +10,10 @@ const HeaderContainer = styled.header`
   justify-content: space-between;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   z-index: 100;
+
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+  }
 `
 
 const Title = styled.h1`
@@ -21,12 +25,21 @@ const Title = styled.h1`
   @media (max-width: 768px) {
     font-size: 1.2rem;
   }
+  @media (max-width: 480px) {
+    font-size: 1rem;
+  }
 `
 
 const RightArea = styled.div`
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  
+  @media (max-width: 480px) {
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
 `
 
 const Select = styled.select`
@@ -35,6 +48,11 @@ const Select = styled.select`
   color: white;
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
+
+  @media (max-width: 480px) {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+  }
 `
 
 const BackButton = styled.button`
@@ -54,6 +72,11 @@ const BackButton = styled.button`
   
   &:active {
     transform: scale(0.95);
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
   }
 `
 

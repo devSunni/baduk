@@ -9,6 +9,11 @@ const Wrapper = styled.div`
   padding: 1rem;
   gap: 1rem;
   align-items: center;
+
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+    gap: 0.6rem;
+  }
 `
 
 const Controls = styled.div`
@@ -17,6 +22,11 @@ const Controls = styled.div`
   gap: 0.5rem;
   width: 100%;
   max-width: 720px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
 `
 
 const Button = styled.button`
@@ -31,6 +41,11 @@ const Button = styled.button`
   transition: all 0.2s ease;
   &:hover { transform: translateY(-1px); }
   &:active { transform: translateY(0); }
+
+  @media (max-width: 480px) {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.85rem;
+  }
 `
 
 const Row = styled.div`
@@ -38,6 +53,11 @@ const Row = styled.div`
   gap: 0.5rem;
   align-items: center;
   justify-content: center;
+
+  @media (max-width: 480px) {
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
 `
 
 const Label = styled.label`
@@ -45,6 +65,11 @@ const Label = styled.label`
   display: flex;
   align-items: center;
   gap: 0.4rem;
+
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+    gap: 0.3rem;
+  }
 `
 
 const Select = styled.select`
@@ -53,6 +78,11 @@ const Select = styled.select`
   color: white;
   padding: 0.4rem 0.6rem;
   border-radius: 8px;
+
+  @media (max-width: 480px) {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+  }
 `
 
 const Checkbox = styled.input``
@@ -60,6 +90,10 @@ const Checkbox = styled.input``
 const Tip = styled.div`
   color: rgba(255,255,255,0.85);
   text-align: center;
+
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+  }
 `
 
 const Score = styled.div`
@@ -69,6 +103,11 @@ const Score = styled.div`
   gap: 1rem;
   align-items: center;
   justify-content: center;
+
+  @media (max-width: 480px) {
+    gap: 0.6rem;
+    font-size: 0.95rem;
+  }
 `
 
 const ManualMode = ({ boardSize = 19 }) => {
