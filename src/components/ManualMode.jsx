@@ -124,6 +124,7 @@ const ManualMode = ({ boardSize = 19 }) => {
   const [rulesEnabled, setRulesEnabled] = useState(true)
   const [showTerritory, setShowTerritory] = useState(true)
   const [showScore, setShowScore] = useState(true)
+  const [showSettings, setShowSettings] = useState(false)
   const boardRef = useRef(null)
 
   useEffect(() => {
@@ -278,9 +279,27 @@ const ManualMode = ({ boardSize = 19 }) => {
     setCurrentColor(next.currentColor)
   }
 
-  const handleSaveImage = () => {
+  const handleShare = async () => {
     const dataUrl = boardRef.current?.exportAsImage?.()
     if (!dataUrl) return
+
+    try {
+      const res = await fetch(dataUrl)
+      const blob = await res.blob()
+      const file = new File([blob], `baduk_${boardSize}x${boardSize}.png`, { type: 'image/png' })
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: '바둑판',
+          text: '현재 바둑판을 공유합니다.'
+        })
+        return
+      }
+    } catch (e) {
+      // fall through to download
+    }
+
     const a = document.createElement('a')
     a.href = dataUrl
     a.download = `manual_${boardSize}x${boardSize}.png`
@@ -353,57 +372,61 @@ const ManualMode = ({ boardSize = 19 }) => {
     <Wrapper>
       <Controls>
         <Button onClick={handleUndo}>되돌리기</Button>
-        <Button onClick={handleRedo}>다시실행</Button>
         <Button onClick={handleReset}>초기화</Button>
         <Button onClick={() => setEraser(e => !e)}>{eraser ? '지우개 종료' : '지우개 모드'}</Button>
-        <Button onClick={handleSaveImage} variant="primary">그림으로 저장</Button>
+        <Button onClick={() => setShowSettings(s => !s)}>{showSettings ? '설정 접기' : '설정 펼치기'}</Button>
+        <Button onClick={handleShare} variant="primary">공유하기</Button>
       </Controls>
 
-      <Row>
-        <Label>
-          <Checkbox type="checkbox" checked={autoColor} onChange={(e) => setAutoColor(e.target.checked)} />
-          자동 색 번갈아 두기
-        </Label>
-        {!autoColor && (
-          <Select value={currentColor} onChange={(e) => setCurrentColor(e.target.value)}>
-            <option value="black">흑</option>
-            <option value="white">백</option>
-          </Select>
-        )}
-      </Row>
+      {showSettings && (
+        <>
+          <Row>
+            <Label>
+              <Checkbox type="checkbox" checked={autoColor} onChange={(e) => setAutoColor(e.target.checked)} />
+              자동 색 번갈아 두기
+            </Label>
+            {!autoColor && (
+              <Select value={currentColor} onChange={(e) => setCurrentColor(e.target.value)}>
+                <option value="black">흑</option>
+                <option value="white">백</option>
+              </Select>
+            )}
+          </Row>
 
-      <Row>
-        <Label>
-          <Checkbox type="checkbox" checked={showMoveNumbers} onChange={(e) => setShowMoveNumbers(e.target.checked)} />
-          수순 번호 표시
-        </Label>
-        <Label>
-          <Checkbox type="checkbox" checked={showCoordinates} onChange={(e) => setShowCoordinates(e.target.checked)} />
-          좌표 표시
-        </Label>
-        <Label>
-          테마
-          <Select value={theme} onChange={(e) => setTheme(e.target.value)}>
-            <option value="wood">우드</option>
-            <option value="dark">다크</option>
-          </Select>
-        </Label>
-      </Row>
+          <Row>
+            <Label>
+              <Checkbox type="checkbox" checked={showMoveNumbers} onChange={(e) => setShowMoveNumbers(e.target.checked)} />
+              수순 번호 표시
+            </Label>
+            <Label>
+              <Checkbox type="checkbox" checked={showCoordinates} onChange={(e) => setShowCoordinates(e.target.checked)} />
+              좌표 표시
+            </Label>
+            <Label>
+              테마
+              <Select value={theme} onChange={(e) => setTheme(e.target.value)}>
+                <option value="wood">우드</option>
+                <option value="dark">다크</option>
+              </Select>
+            </Label>
+          </Row>
 
-      <Row>
-        <Label>
-          <Checkbox type="checkbox" checked={rulesEnabled} onChange={(e) => setRulesEnabled(e.target.checked)} />
-          바둑룰 적용(자살금지/따내기)
-        </Label>
-        <Label>
-          <Checkbox type="checkbox" checked={showTerritory} onChange={(e) => setShowTerritory(e.target.checked)} />
-          집 표시
-        </Label>
-        <Label>
-          <Checkbox type="checkbox" checked={showScore} onChange={(e) => setShowScore(e.target.checked)} />
-          점수/우세 표시
-        </Label>
-      </Row>
+          <Row>
+            <Label>
+              <Checkbox type="checkbox" checked={rulesEnabled} onChange={(e) => setRulesEnabled(e.target.checked)} />
+              바둑룰 적용(자살금지/따내기)
+            </Label>
+            <Label>
+              <Checkbox type="checkbox" checked={showTerritory} onChange={(e) => setShowTerritory(e.target.checked)} />
+              집 표시
+            </Label>
+            <Label>
+              <Checkbox type="checkbox" checked={showScore} onChange={(e) => setShowScore(e.target.checked)} />
+              점수/우세 표시
+            </Label>
+          </Row>
+        </>
+      )}
 
       <BadukBoard
         ref={boardRef}
@@ -426,7 +449,7 @@ const ManualMode = ({ boardSize = 19 }) => {
         </Score>
       )}
 
-      <Tip>돌을 눌러 자유롭게 두세요. 자동/수동 색 전환, 지우개, 룰 적용, 집/점수 표시, PNG 저장을 지원합니다.</Tip>
+      <Tip>돌을 눌러 자유롭게 두세요. 자동/수동 색 전환, 지우개, 룰 적용, 집/점수 표시, 공유하기를 지원합니다.</Tip>
     </Wrapper>
   )
 }
